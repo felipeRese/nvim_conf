@@ -10,6 +10,14 @@ vim.opt.number = true
 vim.keymap.set({ "n", "x" }, "<C-S-C>", '"+y', { desc = "Copy system clipboard" })
 vim.keymap.set({ "n", "x" }, "<C-S-V>", '"+p', { desc = "Paste system clipboard" })
 
+-- Not change cursor shape in insert mode
+vim.opt.guicursor = ""
+vim.cmd([[
+  let &t_SI = ''
+  let &t_SR = ''
+  let &t_EI = ''
+]])
+
 if vim.g.neovide then
   vim.opt.guifont = "JetBrainsMono Nerd Font:h9"
   vim.g.remember_window_size = true

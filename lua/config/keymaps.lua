@@ -32,3 +32,6 @@ keymap.set("n", "<leader>dsi", "<cmd>DapStepInto<CR>", { desc = "Debugger Step I
 keymap.set("n", "<leader>dsu", "<cmd>DapStepOut<CR>", { desc = "Debugger Step Out" })
 keymap.set("n", "<leader>dc", "<cmd>DapContinue<CR>", { desc = "Debugger Continue" })
 keymap.set("n", "<leader>dx", "<cmd>DapTerminate<CR>", { desc = "Debugger Terminate" })
+
+keymap.set("n", "nq", "<cmd>cn<CR>", { desc = "Next quickfix entry" })
+keymap.set("n", "pq", "<cmd>cp<CR>", { desc = "Previous quickfix entry" })
