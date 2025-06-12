@@ -13,25 +13,5 @@ keymap.set("n", "<leader>sh", "<C-w>s", { desc = "Split window horizontally" }) 
 keymap.set("n", "<leader>se", "<C-w>=", { desc = "Make splits equal size" }) -- make split windows equal width & height
 keymap.set("n", "<leader>sx", "<cmd>close<CR>", { desc = "Close current split" }) -- close current split window
 
--- Debugging keymaps
-keymap.set("n", "<leader>db", "<cmd>DapToggleBreakpoint<CR>", { desc = "Add breakpoint at line" })
-keymap.set("n", "<leader>dus", function()
-  require("dapui").toggle()
-end, { desc = "Open debugging ui" })
-
-keymap.set("n", "<leader>dgt", function()
-  require("dap-go").debug_test()
-end, { desc = "Debug go test" })
-
-keymap.set("n", "<leader>dgl", function()
-  require("dap-go").debug_last()
-end, { desc = "Debug last go test" })
-
-keymap.set("n", "<leader>dso", "<cmd>DapStepOver<CR>", { desc = "Debugger Step Over" })
-keymap.set("n", "<leader>dsi", "<cmd>DapStepInto<CR>", { desc = "Debugger Step Into" })
-keymap.set("n", "<leader>dsu", "<cmd>DapStepOut<CR>", { desc = "Debugger Step Out" })
-keymap.set("n", "<leader>dc", "<cmd>DapContinue<CR>", { desc = "Debugger Continue" })
-keymap.set("n", "<leader>dx", "<cmd>DapTerminate<CR>", { desc = "Debugger Terminate" })
-
-keymap.set("n", "nq", "<cmd>cn<CR>", { desc = "Next quickfix entry" })
-keymap.set("n", "pq", "<cmd>cp<CR>", { desc = "Previous quickfix entry" })
+keymap.set("n", "<leader>nq", "<cmd>cn<CR>", { desc = "Next quickfix entry" })
+keymap.set("n", "<leader>pq", "<cmd>cp<CR>", { desc = "Previous quickfix entry" })

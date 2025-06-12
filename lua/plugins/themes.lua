@@ -1,13 +1,3 @@
---------------------------------------------------------------------------------
--- theme.lua
---
--- This file is part of a lazy.nvim configuration and sets up multiple themes.
--- It lists many popular Neovim color schemes as lazy-loaded plugins.
---
--- The default colorscheme is set to "github_dark_high_contrast" provided by
--- the GitHub theme plugin.
---------------------------------------------------------------------------------
-
 return {
   -- Kanagawa Theme
   {
@@ -15,7 +5,6 @@ return {
     lazy = false,
     priority = 1000,  -- Loads early if needed
     config = function()
-      -- To use Kanagawa later, run: vim.cmd("colorscheme kanagawa")
     end,
   },
 
@@ -84,7 +73,7 @@ return {
       require("catppuccin").setup({
         flavour = "mocha",  -- Options: "latte", "frappe", "macchiato", "mocha"
       })
-      -- Activate with: vim.cmd("colorscheme catppuccin")
+      vim.cmd("colorscheme catppuccin-mocha")
     end,
   },
 
@@ -100,7 +89,6 @@ return {
         },
       })
       -- Set the default theme to github_dark_high_contrast
-      vim.cmd("colorscheme github_dark_high_contrast")
     end,
   },
 

@@ -7,6 +7,8 @@ vim.g.mapleader = " "
 vim.wo.relativenumber = true
 vim.opt.number = true
 
+vim.cmd("COQnow [--shut-up]")
+
 vim.keymap.set({ "n", "x" }, "<C-S-C>", '"+y', { desc = "Copy system clipboard" })
 vim.keymap.set({ "n", "x" }, "<C-S-V>", '"+p', { desc = "Paste system clipboard" })
 
@@ -67,9 +69,6 @@ opt.swapfile = false
 
 -- Fill empty lines in buffer with spaces
 opt.fillchars = { eob = " " }
-
--- Enable snippet support
-require("luasnip.loaders.from_lua").load({ paths = "~/.config/nvim/lua/snippets" })
 
 -- System clipboard
 vim.opt.clipboard:append("unnamedplus")
