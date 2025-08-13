@@ -7,7 +7,7 @@ vim.g.mapleader = " "
 vim.wo.relativenumber = true
 vim.opt.number = true
 
-vim.cmd("COQnow [--shut-up]")
+vim.cmd("COQnow")
 
 vim.keymap.set({ "n", "x" }, "<C-S-C>", '"+y', { desc = "Copy system clipboard" })
 vim.keymap.set({ "n", "x" }, "<C-S-V>", '"+p', { desc = "Paste system clipboard" })
@@ -46,8 +46,6 @@ if vim.g.neovide then
   vim.keymap.set("n", "<F11>", toggle_fullscreen, { silent = true })
   vim.keymap.set("n", "<F10>", toggle_transparency, { silent = true })
 end
-
-vim.keymap.set('n', '<leader>cc', ':CopilotChatToggle<CR>', { noremap = true, silent = true })
 
 local opt = vim.opt
 
