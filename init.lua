@@ -20,6 +20,7 @@ vim.cmd([[
   let &t_EI = ''
 ]])
 
+
 if vim.g.neovide then
   vim.opt.guifont = "JetBrainsMono Nerd Font:h9"
   vim.g.remember_window_size = true

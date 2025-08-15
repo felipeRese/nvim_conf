@@ -7,6 +7,14 @@ return {
     config = function()
     end,
   },
+  {
+    "ishan9299/nvim-solarized-lua",
+    lazy = false,
+    priority = 1000,
+    config = function()
+      vim.cmd("colorscheme solarized-flat")
+    end,
+  },
 
   -- Gruvbox Theme
   {
@@ -73,7 +81,6 @@ return {
       require("catppuccin").setup({
         flavour = "mocha",  -- Options: "latte", "frappe", "macchiato", "mocha"
       })
-      vim.cmd("colorscheme catppuccin-mocha")
     end,
   },
 

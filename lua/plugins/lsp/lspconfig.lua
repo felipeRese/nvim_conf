@@ -1,5 +1,5 @@
 return {
-  "neovim/nvim-lspconfig", -- REQUIRED: for native Neovim LSP integration
+  "neovim/nvim-lspconfig",
   lazy = false,
   dependencies = {
     { "ms-jpq/coq_nvim", branch = "coq" },
@@ -9,14 +9,40 @@ return {
     { "williamboman/mason-lspconfig.nvim" },
   },
   config = function()
+    -- 1) COQ settings must come before requiring coq
+    vim.g.coq_settings = {
+      keymap = { recommended = false }, -- don't override our maps
+    }
+
     local lspconfig = require("lspconfig")
+    local util = require("lspconfig.util")
     local coq = require("coq")
 
+    -- 2) Completions: keep <C-n>/<C-p> for COQ when menu is open
+    local km_opts = { silent = true, expr = true }
+    vim.keymap.set("i", "<C-n>", function()
+      return (vim.fn.pumvisible() == 1) and "<Plug>(coq_navigate_next)" or "<C-n>"
+    end, km_opts)
+    vim.keymap.set("i", "<C-p>", function()
+      return (vim.fn.pumvisible() == 1) and "<Plug>(coq_navigate_prev)" or "<C-p>"
+    end, km_opts)
+
+    -- 3) mason + mason-lspconfig
     require("mason").setup()
     require("mason-lspconfig").setup({
-      ensure_installed = { "gopls", "luau_lsp", "ts_ls", "jsonls" },
+      ensure_installed = {
+        "gopls",
+        "luau_lsp",
+        "ts_ls",
+        "jsonls",
+        "svelte",
+        "graphql",
+        "emmet_ls",
+        "clangd",
+      },
     })
 
+    -- 4) Common LSP keymaps
     vim.api.nvim_create_autocmd("LspAttach", {
       group = vim.api.nvim_create_augroup("UserLspConfig", {}),
       callback = function(ev)
@@ -45,13 +71,14 @@ return {
         keymap.set("n", "[d", vim.diagnostic.goto_prev, opts)
         opts.desc = "Go to next diagnostic"
         keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
-        opts.desc = "Show documentation for what is under cursor"
+        opts.desc = "Show documentation"
         keymap.set("n", "K", vim.lsp.buf.hover, opts)
         opts.desc = "Restart LSP"
         keymap.set("n", "<leader>rs", ":LspRestart<CR>", opts)
       end,
     })
 
+    -- 5) Per-server settings
     local servers = {
       gopls = {
         filetypes = { "go", "gomod", "gowork", "gotmpl" },
@@ -59,26 +86,22 @@ return {
           gopls = {
             completeUnimported = true,
             usePlaceholders = true,
-            analyses = {
-              unusedparams = true,
-            },
+            analyses = { unusedparams = true },
           },
         },
       },
+
       luau_lsp = {
         settings = {
           Lua = {
-            diagnostics = {
-              globals = { "vim" },
-            },
-            completion = {
-              callSnippet = "Replace",
-            },
+            diagnostics = { globals = { "vim" } },
+            completion = { callSnippet = "Replace" },
           },
         },
       },
+
       svelte = {
-        on_attach = function(client, bufnr)
+        on_attach = function(client, _)
           vim.api.nvim_create_autocmd("BufWritePost", {
             pattern = { "*.js", "*.ts" },
             callback = function(ctx)
@@ -87,19 +110,53 @@ return {
           })
         end,
       },
+
       graphql = {
         filetypes = { "graphql", "gql", "svelte", "typescriptreact", "javascriptreact" },
       },
+
       emmet_ls = {
         filetypes = { "html", "typescriptreact", "javascriptreact", "css", "sass", "scss", "less", "svelte" },
       },
+
+      -- Fixed clangd block (no LazyVim-specific glue; proper root_dir and filetypes)
       clangd = {
         filetypes = { "c", "cpp", "objc", "objcpp" },
+        root_dir = function(fname)
+          return util.root_pattern(
+            "compile_commands.json",
+            "compile_flags.txt",
+            ".clangd",
+            "Makefile",
+            "meson.build",
+            "meson_options.txt",
+            "build.ninja"
+          )(fname) or util.find_git_ancestor(fname) or util.path.dirname(fname)
+        end,
+        capabilities = {
+          offsetEncoding = { "utf-16" },
+        },
+        cmd = {
+          "clangd",
+          "--background-index",
+          "--clang-tidy",
+          "--header-insertion=iwyu",
+          "--completion-style=detailed",
+          "--function-arg-placeholders",
+          "--fallback-style=llvm",
+        },
+        init_options = {
+          usePlaceholders = true,
+          completeUnimported = true,
+          clangdFileStatus = true,
+        },
       },
     }
 
-    for server, config in pairs(servers) do
-      lspconfig[server].setup(coq.lsp_ensure_capabilities(config))
+    -- 6) Setup all servers with COQ capabilities
+    for server, cfg in pairs(servers) do
+      lspconfig[server].setup(coq.lsp_ensure_capabilities(cfg))
     end
   end,
 }
+
