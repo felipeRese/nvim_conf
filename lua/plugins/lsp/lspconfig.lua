@@ -18,6 +18,16 @@ return {
     local util = require("lspconfig.util")
     local coq = require("coq")
 
+    -- Detect NixOS (for skipping Mason-installed clangd)
+    local function is_nixos()
+      local ok, f = pcall(io.open, "/etc/os-release", "r")
+      if not ok or not f then return false end
+      local data = f:read("*a") or ""
+      f:close()
+      return data:match("ID=nixos") ~= nil
+    end
+    local on_nixos = is_nixos()
+
     -- 2) Completions: keep <C-n>/<C-p> for COQ when menu is open
     local km_opts = { silent = true, expr = true }
     vim.keymap.set("i", "<C-n>", function()
@@ -27,22 +37,7 @@ return {
       return (vim.fn.pumvisible() == 1) and "<Plug>(coq_navigate_prev)" or "<C-p>"
     end, km_opts)
 
-    -- 3) mason + mason-lspconfig
-    require("mason").setup()
-    require("mason-lspconfig").setup({
-      ensure_installed = {
-        "gopls",
-        "luau_lsp",
-        "ts_ls",
-        "jsonls",
-        "svelte",
-        "graphql",
-        "emmet_ls",
-        "clangd",
-      },
-    })
-
-    -- 4) Common LSP keymaps
+    -- 3) Common LSP keymaps
     vim.api.nvim_create_autocmd("LspAttach", {
       group = vim.api.nvim_create_augroup("UserLspConfig", {}),
       callback = function(ev)
@@ -78,7 +73,7 @@ return {
       end,
     })
 
-    -- 5) Per-server settings
+    -- 4) Per-server settings
     local servers = {
       gopls = {
         filetypes = { "go", "gomod", "gowork", "gotmpl" },
@@ -119,7 +114,7 @@ return {
         filetypes = { "html", "typescriptreact", "javascriptreact", "css", "sass", "scss", "less", "svelte" },
       },
 
-      -- Fixed clangd block (no LazyVim-specific glue; proper root_dir and filetypes)
+      -- clangd: usar o binário do Nix no NixOS (não instalar via Mason)
       clangd = {
         filetypes = { "c", "cpp", "objc", "objcpp" },
         root_dir = function(fname)
@@ -153,10 +148,41 @@ return {
       },
     }
 
-    -- 6) Setup all servers with COQ capabilities
-    for server, cfg in pairs(servers) do
-      lspconfig[server].setup(coq.lsp_ensure_capabilities(cfg))
+    -- helper: setup único com COQ
+    local function setup_one(name, cfg)
+      cfg = cfg or {}
+      lspconfig[name].setup(coq.lsp_ensure_capabilities(cfg))
+    end
+
+    -- 5) Mason: condicionar clangd conforme NixOS
+    require("mason").setup()
+
+    local base_ensure = {
+      "gopls",
+      "luau_lsp",
+      "ts_ls",
+      "jsonls",
+      "svelte",
+      "graphql",
+      "emmet_ls",
+      -- sem "clangd" aqui por padrão
+    }
+
+    if on_nixos then
+      -- NixOS: não peça clangd ao Mason; configure tudo diretamente
+      for name, cfg in pairs(servers) do
+        setup_one(name, cfg)
+      end
+    else
+      -- Outras distros: Mason instala clangd normalmente
+      table.insert(base_ensure, "clangd")
+      local mlsp = require("mason-lspconfig")
+      mlsp.setup({ ensure_installed = base_ensure })
+      mlsp.setup_handlers({
+        function(server)
+          setup_one(server, servers[server] or {})
+        end,
+      })
     end
   end,
 }
-
