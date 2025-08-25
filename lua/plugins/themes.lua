@@ -12,7 +12,6 @@ return {
     lazy = false,
     priority = 1000,
     config = function()
-      vim.cmd("colorscheme solarized-flat")
     end,
   },
 
@@ -81,6 +80,7 @@ return {
       require("catppuccin").setup({
         flavour = "mocha",  -- Options: "latte", "frappe", "macchiato", "mocha"
       })
+      vim.cmd("colorscheme catppuccin")
     end,
   },
 

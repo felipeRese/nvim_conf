@@ -15,3 +15,5 @@ keymap.set("n", "<leader>sx", "<cmd>close<CR>", { desc = "Close current split" }
 
 keymap.set("n", "<leader>nq", "<cmd>cn<CR>", { desc = "Next quickfix entry" })
 keymap.set("n", "<leader>pq", "<cmd>cp<CR>", { desc = "Previous quickfix entry" })
+
+keymap.set("n", "<leader>fb", "<cmd>Buffers<CR>", { desc = "Previous quickfix entry" })

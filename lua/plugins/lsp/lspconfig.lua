@@ -2,23 +2,120 @@ return {
   "neovim/nvim-lspconfig",
   lazy = false,
   dependencies = {
-    { "ms-jpq/coq_nvim", branch = "coq" },
-    { "ms-jpq/coq.artifacts", branch = "artifacts" },
-    { "ms-jpq/coq.thirdparty", branch = "3p" },
+    { "hrsh7th/nvim-cmp" },
+    { "hrsh7th/cmp-nvim-lsp" },
+    { "hrsh7th/cmp-buffer" },
+    { "hrsh7th/cmp-path" },
+    { "hrsh7th/cmp-nvim-lua" },
     { "williamboman/mason.nvim" },
     { "williamboman/mason-lspconfig.nvim" },
+    { "hrsh7th/vim-vsnip" },   -- ✅ snippet engine
+    { "hrsh7th/cmp-vsnip" },   -- ✅ cmp source for vsnip
   },
   config = function()
-    -- 1) COQ settings must come before requiring coq
-    vim.g.coq_settings = {
-      keymap = { recommended = false }, -- don't override our maps
-    }
-
+    local cmp = require("cmp")
     local lspconfig = require("lspconfig")
     local util = require("lspconfig.util")
-    local coq = require("coq")
 
-    -- Detect NixOS (for skipping Mason-installed clangd)
+    -- helpers
+    local has_words_before = function()
+      local line, col = unpack(vim.api.nvim_win_get_cursor(0))
+      return col ~= 0 and vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match("%s") == nil
+    end
+
+    local feedkey = function(key, mode)
+      vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(key, true, true, true), mode, true)
+    end
+
+    -- ✅ nvim-cmp setup (SuperTab behaviour)
+    cmp.setup({
+      completion = { 
+        autocomplete = false,
+        completeopt = "menu,menuone,noinsert" 
+      },
+      snippet = {
+        expand = function(args)
+          vim.fn["vsnip#anonymous"](args.body)
+        end,
+      },
+      mapping = cmp.mapping.preset.insert({
+        ["<Tab>"] = cmp.mapping(function(fallback)
+          if cmp.visible() then
+            cmp.select_next_item()
+          elseif vim.fn  == 1 then
+            feedkey("<Plug>(vsnip-expand-or-jump)", "")
+          elseif has_words_before() then
+            cmp.complete()
+          else
+            fallback()
+          end
+        end, { "i", "s" }),
+
+        ["<S-Tab>"] = cmp.mapping(function(fallback)
+          if cmp.visible() then
+            cmp.select_prev_item()
+          elseif vim.fn["vsnip#jumpable"](-1) == 1 then
+            feedkey("<Plug>(vsnip-jump-prev)", "")
+          else
+            fallback()
+          end
+        end, { "i", "s" }),
+
+        ["<CR>"] = cmp.mapping.confirm({
+          behavior = cmp.ConfirmBehavior.Replace,
+          select = true, -- ✅ auto-select first item if none chosen
+        }),
+      }),
+
+      formatting = {
+        fields = { "kind", "abbr", "menu" },
+      },
+      window = {
+        completion = cmp.config.window.bordered(),
+        documentation = cmp.config.window.bordered(),
+      },
+      performance = {
+        max_view_entries = 20,
+      },
+      sorting = {
+        priority_weight = 2,
+        comparators = {
+          function(entry1, entry2)
+            if entry1.completion_item.label == entry2.completion_item.label then
+              return false
+            end
+          end,
+          cmp.config.compare.exact,
+          cmp.config.compare.length,
+          cmp.config.compare.score,
+          cmp.config.compare.recently_used,
+          cmp.config.compare.offset,
+          cmp.config.compare.kind,
+          cmp.config.compare.sort_text,
+          cmp.config.compare.order,
+        },
+      },
+      sources = cmp.config.sources({
+        { name = "nvim_lsp" },
+        { name = "vsnip" }, -- ✅ added vsnip source
+        { name = "buffer" },
+        { name = "path" },
+        { name = "nvim_lua" },
+      }),
+    })
+
+    cmp.event:on("confirm_done", function(evt)
+      local entry = evt.entry
+      local item = entry:get_completion_item()
+      local kinds = { Function = 3, Method = 2 }
+      if kinds[item.kind] then
+        local keys = vim.api.nvim_replace_termcodes("()<Left>", true, false, true)
+        vim.api.nvim_feedkeys(keys, "i", true)
+      end
+    end)
+
+    local capabilities = require("cmp_nvim_lsp").default_capabilities()
+
     local function is_nixos()
       local ok, f = pcall(io.open, "/etc/os-release", "r")
       if not ok or not f then return false end
@@ -28,16 +125,6 @@ return {
     end
     local on_nixos = is_nixos()
 
-    -- 2) Completions: keep <C-n>/<C-p> for COQ when menu is open
-    local km_opts = { silent = true, expr = true }
-    vim.keymap.set("i", "<C-n>", function()
-      return (vim.fn.pumvisible() == 1) and "<Plug>(coq_navigate_next)" or "<C-n>"
-    end, km_opts)
-    vim.keymap.set("i", "<C-p>", function()
-      return (vim.fn.pumvisible() == 1) and "<Plug>(coq_navigate_prev)" or "<C-p>"
-    end, km_opts)
-
-    -- 3) Common LSP keymaps
     vim.api.nvim_create_autocmd("LspAttach", {
       group = vim.api.nvim_create_augroup("UserLspConfig", {}),
       callback = function(ev)
@@ -73,7 +160,7 @@ return {
       end,
     })
 
-    -- 4) Per-server settings
+    -- configs por servidor
     local servers = {
       gopls = {
         filetypes = { "go", "gomod", "gowork", "gotmpl" },
@@ -114,75 +201,61 @@ return {
         filetypes = { "html", "typescriptreact", "javascriptreact", "css", "sass", "scss", "less", "svelte" },
       },
 
-      -- clangd: usar o binário do Nix no NixOS (não instalar via Mason)
+      jsonls = {},
+
       clangd = {
-        filetypes = { "c", "cpp", "objc", "objcpp" },
-        root_dir = function(fname)
-          return util.root_pattern(
-            "compile_commands.json",
-            "compile_flags.txt",
-            ".clangd",
-            "Makefile",
-            "meson.build",
-            "meson_options.txt",
-            "build.ninja"
-          )(fname) or util.find_git_ancestor(fname) or util.path.dirname(fname)
-        end,
-        capabilities = {
-          offsetEncoding = { "utf-16" },
-        },
         cmd = {
           "clangd",
           "--background-index",
           "--clang-tidy",
           "--header-insertion=iwyu",
           "--completion-style=detailed",
-          "--function-arg-placeholders",
+          "--function-arg-placeholders=true",
           "--fallback-style=llvm",
+          "--limit-results=20",
         },
+        filetypes = { "c", "cpp", "objc", "objcpp" },
+        root_dir = function(fname)
+          return util.root_pattern(
+            "compile_commands.json",
+            ".clangd",
+            ".git",
+            "Makefile"
+          )(fname) or util.path.dirname(fname)
+        end,
+        capabilities = capabilities,
         init_options = {
           usePlaceholders = true,
-          completeUnimported = true,
           clangdFileStatus = true,
         },
       },
     }
 
-    -- helper: setup único com COQ
-    local function setup_one(name, cfg)
-      cfg = cfg or {}
-      lspconfig[name].setup(coq.lsp_ensure_capabilities(cfg))
-    end
-
-    -- 5) Mason: condicionar clangd conforme NixOS
     require("mason").setup()
+    local mlsp = require("mason-lspconfig")
 
     local base_ensure = {
       "gopls",
       "luau_lsp",
-      "ts_ls",
       "jsonls",
       "svelte",
       "graphql",
       "emmet_ls",
-      -- sem "clangd" aqui por padrão
+      "clangd",
     }
 
     if on_nixos then
-      -- NixOS: não peça clangd ao Mason; configure tudo diretamente
-      for name, cfg in pairs(servers) do
-        setup_one(name, cfg)
-      end
-    else
-      -- Outras distros: Mason instala clangd normalmente
-      table.insert(base_ensure, "clangd")
-      local mlsp = require("mason-lspconfig")
-      mlsp.setup({ ensure_installed = base_ensure })
-      mlsp.setup_handlers({
-        function(server)
-          setup_one(server, servers[server] or {})
-        end,
-      })
+      base_ensure = vim.tbl_filter(function(server)
+        return server ~= "clangd"
+      end, base_ensure)
+    end
+
+    mlsp.setup({ ensure_installed = base_ensure })
+
+    for _, server in ipairs(vim.list_extend(vim.deepcopy(base_ensure), { "clangd" })) do
+      local cfg = servers[server] or {}
+      cfg.capabilities = vim.tbl_deep_extend("force", {}, capabilities, cfg.capabilities or {})
+      lspconfig[server].setup(cfg)
     end
   end,
 }
